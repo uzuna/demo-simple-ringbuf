@@ -1,5 +1,6 @@
 use std::{
     alloc::Layout,
+    cell::Cell,
     mem, ptr,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -14,8 +15,13 @@ pub struct Buffer<T> {
     buffer: *mut T,
     capacity: usize,
     allocated_size: usize,
+    // PCで別のスレッドが触るので個別のL1キャッシュに乗るようにPaddingで埋めて分割する
+    _padding0: [usize; crate::cacheline_pad!(3)],
     write_idx: AtomicUsize,
+    cached_read_idx: Cell<usize>,
+    _padding1: [usize; crate::cacheline_pad!(2)],
     read_idx: AtomicUsize,
+    cached_write_idx: Cell<usize>,
 }
 unsafe impl<T: Sync> Sync for Buffer<T> {}
 
@@ -37,8 +43,12 @@ impl<T> Buffer<T> {
             buffer: ptr,
             capacity,
             allocated_size: capacity.next_power_of_two(),
+            _padding0: [0; crate::cacheline_pad!(3)],
             write_idx: AtomicUsize::new(0),
+            cached_read_idx: Cell::new(0),
+            _padding1: [0; crate::cacheline_pad!(2)],
             read_idx: AtomicUsize::new(0),
+            cached_write_idx: Cell::new(0),
         }
     }
 
@@ -61,9 +71,13 @@ impl<T> Buffer<T> {
 
     pub fn enqueue(&self, item: T) -> bool {
         let write_idx = self.write_idx.load(Ordering::Relaxed);
-        let read_idx = self.read_idx.load(Ordering::Acquire);
-        if read_idx + self.capacity <= write_idx {
-            return false;
+        if self.cached_read_idx.get() + self.capacity <= write_idx {
+            self.cached_read_idx
+                .set(self.read_idx.load(Ordering::Acquire));
+            assert!(self.cached_read_idx.get() <= write_idx);
+            if write_idx - self.cached_read_idx.get() == self.capacity {
+                return false;
+            }
         }
 
         unsafe {
@@ -76,9 +90,13 @@ impl<T> Buffer<T> {
 
     pub fn dequeue(&self) -> Option<T> {
         let read_idx = self.read_idx.load(Ordering::Relaxed);
-        let write_idx = self.write_idx.load(Ordering::Acquire);
-        if write_idx == read_idx {
-            return None;
+        if self.cached_write_idx.get() == read_idx {
+            self.cached_write_idx
+                .set(self.write_idx.load(Ordering::Acquire));
+            assert!(read_idx <= self.cached_write_idx.get());
+            if self.cached_write_idx.get() == read_idx {
+                return None;
+            }
         }
 
         let v = unsafe { self.load(read_idx) };

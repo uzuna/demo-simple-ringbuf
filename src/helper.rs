@@ -19,3 +19,14 @@ pub trait RingBufProducer<T> {
 pub trait RingBufConsumer<T> {
     fn dequeue(&self) -> Option<T>;
 }
+
+// CPUのcachelineの長さが64byteと想定している
+pub const CACHELINE_LEN: usize = 64;
+
+// reference from https://github.com/polyfractal/bounded-spsc-queue
+#[macro_export(local_inner_macros)]
+macro_rules! cacheline_pad {
+    ($N:expr) => {
+        $crate::helper::CACHELINE_LEN / std::mem::size_of::<usize>() - $N
+    };
+}
