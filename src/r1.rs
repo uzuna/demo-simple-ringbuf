@@ -3,7 +3,7 @@ use std::{alloc::Layout, mem, ptr};
 use crate::helper::allocate_buffer;
 
 /// Ringbuffer
-/// index calculation: by modulo
+/// index calculation: by and
 /// don't support multi-threding
 #[derive(Debug)]
 pub struct RingBuf<T> {
@@ -28,11 +28,11 @@ impl<T> RingBuf<T> {
 
     #[inline]
     fn read_ptr(&self) -> usize {
-        self.read_idx % (self.allocated_size - 1)
+        self.read_idx & (self.allocated_size - 1)
     }
     #[inline]
     fn write_ptr(&self) -> usize {
-        self.write_idx % (self.allocated_size - 1)
+        self.write_idx & (self.allocated_size - 1)
     }
 
     #[inline]
