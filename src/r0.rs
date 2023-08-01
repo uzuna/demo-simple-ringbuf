@@ -1,6 +1,6 @@
 use std::{alloc::Layout, mem, ptr};
 
-use crate::helper::allocate_buffer;
+use crate::helper::{allocate_buffer, RingBufTrait};
 
 /// Ringbuffer
 /// index calculation: by modulo
@@ -46,8 +46,10 @@ impl<T> RingBuf<T> {
         let end = self.buf.add(pos);
         ptr::write(&mut *end, v);
     }
+}
 
-    pub fn enqueue(&mut self, item: T) -> bool {
+impl<T> RingBufTrait<T> for RingBuf<T> {
+    fn enqueue(&mut self, item: T) -> bool {
         if (self.write_idx - self.read_idx) == self.capacity {
             return false;
         }
@@ -58,7 +60,7 @@ impl<T> RingBuf<T> {
         true
     }
 
-    pub fn dequeue(&mut self) -> Option<T> {
+    fn dequeue(&mut self) -> Option<T> {
         if self.read_idx == self.write_idx {
             return None;
         }

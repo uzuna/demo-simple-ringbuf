@@ -7,3 +7,15 @@ pub unsafe fn allocate_buffer<T>(capacity: usize) -> *mut T {
     }
     ptr as *mut T
 }
+
+pub trait RingBufTrait<T> {
+    fn enqueue(&mut self, item: T) -> bool;
+    fn dequeue(&mut self) -> Option<T>;
+}
+
+pub trait RingBufProducer<T> {
+    fn enqueue(&self, item: T) -> bool;
+}
+pub trait RingBufConsumer<T> {
+    fn dequeue(&self) -> Option<T>;
+}
