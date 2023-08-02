@@ -20,11 +20,9 @@ bench: ${TARGET}
 	@${TARGET} -r r0s
 	@${TARGET} -r r1s
 	@${TARGET} -r r2s
-	@${TARGET} -r r2m -c 0,0
 	@${TARGET} -r r2m -c 0,1
 	@${TARGET} -r r2m -c 0,2
 	@${TARGET} -r r3s
-	@${TARGET} -r r3m -c 0,0
 	@${TARGET} -r r3m -c 0,1
 	@${TARGET} -r r3m -c 0,2
 
@@ -36,13 +34,11 @@ perf.s: ${TARGET}
 .PHONY: perf.r2
 perf.r2: ${TARGET}
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2s
-	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2m -c 0,0
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2m -c 0,1
 
 .PHONY: perf.r3
 perf.r3: ${TARGET}
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r3s
-	perf stat ${PERF_STAT_OPT} ${TARGET} -r r3m -c 0,0
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r3m -c 0,1
 
 .PHONY: enable-perf

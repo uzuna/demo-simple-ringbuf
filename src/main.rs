@@ -21,11 +21,9 @@ struct CorePair {
 impl Default for CorePair {
     fn default() -> Self {
         let mut core_ids = core_affinity::get_core_ids().unwrap();
-        let core0 = core_ids.pop().unwrap();
-        Self {
-            producer: core0,
-            consumer: core0,
-        }
+        let producer = core_ids.pop().unwrap();
+        let consumer = core_ids.pop().unwrap();
+        Self { producer, consumer }
     }
 }
 
@@ -159,8 +157,11 @@ fn bench_multi_thread_pc<
             println!("set_for_current failed");
         }
         for _ in 0..loop_count {
-            for i in 0..enqueue_count {
-                p.enqueue(i as i32);
+            let mut count = enqueue_count;
+            while 0 < count {
+                if p.enqueue(count as i32) {
+                    count -= 1;
+                }
             }
         }
     });
@@ -170,10 +171,12 @@ fn bench_multi_thread_pc<
         if !core_affinity::set_for_current(core_c) {
             println!("set_for_current failed");
         }
-
         for _ in 0..loop_count {
-            for _ in 0..enqueue_count {
-                c.dequeue();
+            let mut count = enqueue_count;
+            while 0 < count {
+                if c.dequeue().is_some() {
+                    count -= 1;
+                }
             }
         }
     });
