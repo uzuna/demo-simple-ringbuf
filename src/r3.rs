@@ -19,9 +19,11 @@ pub struct Buffer<T> {
     _padding0: [usize; crate::cacheline_pad!(3)],
     write_idx: AtomicUsize,
     cached_read_idx: Cell<usize>,
-    _padding1: [usize; crate::cacheline_pad!(2)],
+    cached_read_count: Cell<usize>,
+    _padding1: [usize; crate::cacheline_pad!(3)],
     read_idx: AtomicUsize,
     cached_write_idx: Cell<usize>,
+    cached_write_count: Cell<usize>,
 }
 unsafe impl<T: Sync> Sync for Buffer<T> {}
 
@@ -46,9 +48,11 @@ impl<T> Buffer<T> {
             _padding0: [0; crate::cacheline_pad!(3)],
             write_idx: AtomicUsize::new(0),
             cached_read_idx: Cell::new(0),
-            _padding1: [0; crate::cacheline_pad!(2)],
+            cached_read_count: Cell::new(0),
+            _padding1: [0; crate::cacheline_pad!(3)],
             read_idx: AtomicUsize::new(0),
             cached_write_idx: Cell::new(0),
+            cached_write_count: Cell::new(0),
         }
     }
 
@@ -75,6 +79,8 @@ impl<T> Buffer<T> {
             self.cached_read_idx
                 .set(self.read_idx.load(Ordering::Acquire));
             assert!(self.cached_read_idx.get() <= write_idx);
+            // println!("enqueue: w,r: {},{}", write_idx, self.cached_read_idx.get());
+            self.cached_read_count.set(self.cached_read_count.get() + 1);
             if write_idx - self.cached_read_idx.get() == self.capacity {
                 return false;
             }
@@ -94,6 +100,9 @@ impl<T> Buffer<T> {
             self.cached_write_idx
                 .set(self.write_idx.load(Ordering::Acquire));
             assert!(read_idx <= self.cached_write_idx.get());
+            // println!("dequeue: w,r: {},{}", self.cached_write_idx.get(), read_idx);
+            self.cached_write_count
+                .set(self.cached_write_count.get() + 1);
             if self.cached_write_idx.get() == read_idx {
                 return None;
             }
@@ -103,6 +112,14 @@ impl<T> Buffer<T> {
         self.read_idx
             .store(read_idx.wrapping_add(1), Ordering::Release);
         Some(v)
+    }
+
+    pub fn show_cache(&self) {
+        println!(
+            "read: {}, write: {}",
+            self.cached_read_count.get(),
+            self.cached_write_count.get()
+        );
     }
 }
 
@@ -121,14 +138,17 @@ impl<T> Drop for Buffer<T> {
     }
 }
 
-pub fn make<T>(capacity: usize) -> (Producer<T>, Consumer<T>) {
+pub fn make<T>(capacity: usize) -> (Producer<T>, Consumer<T>, Arc<Buffer<T>>) {
     let arc = Arc::new(Buffer::with_capacity(capacity));
 
     (
         Producer {
             buffer: arc.clone(),
         },
-        Consumer { buffer: arc },
+        Consumer {
+            buffer: arc.clone(),
+        },
+        arc,
     )
 }
 

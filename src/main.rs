@@ -5,12 +5,65 @@ mod r2;
 #[macro_use]
 mod r3;
 
-use std::thread::spawn;
+use std::{str::FromStr, thread::spawn, vec};
 
 use helper::{RingBufConsumer, RingBufProducer, RingBufTrait};
 pub use r0::RingBuf as RingBuf0;
 pub use r1::RingBuf as RingBuf1;
 use structopt::{clap::arg_enum, StructOpt};
+
+#[derive(Debug, Clone, Copy)]
+struct CorePair {
+    producer: core_affinity::CoreId,
+    consumer: core_affinity::CoreId,
+}
+
+impl Default for CorePair {
+    fn default() -> Self {
+        let mut core_ids = core_affinity::get_core_ids().unwrap();
+        let core0 = core_ids.pop().unwrap();
+        Self {
+            producer: core0,
+            consumer: core0,
+        }
+    }
+}
+
+impl FromStr for CorePair {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts = s.split(',').collect::<Vec<_>>();
+        if parts.len() != 2 {
+            return Err("expect 2 number".to_string());
+        }
+        let mut part_num = [0_usize; 2];
+        for (i, part) in parts.iter().enumerate() {
+            let num = part.parse::<usize>().map_err(|e| e.to_string())?;
+            part_num[i] = num;
+        }
+        let core_ids = core_affinity::get_core_ids().unwrap();
+        let mut producer = None;
+        let mut consumer = None;
+        for id in core_ids.iter() {
+            if id.id == part_num[0] {
+                producer = Some(*id)
+            }
+            if id.id == part_num[1] {
+                consumer = Some(*id)
+            }
+        }
+        if consumer.is_none() {
+            return Err(format!("core id {} not found", part_num[1]));
+        } else if producer.is_none() {
+            return Err(format!("core id {} not found", part_num[0]));
+        }
+        Ok(Self {
+            producer: producer.unwrap(),
+            consumer: consumer.unwrap(),
+        })
+    }
+}
 
 #[derive(Debug, StructOpt)]
 struct Opt {
@@ -23,7 +76,7 @@ struct Opt {
     #[structopt(short, long, default_value = "R0")]
     ringbuf: RingBufType,
     #[structopt(short, long)]
-    same_core: bool,
+    cores: Option<CorePair>,
 }
 
 arg_enum! {
@@ -78,18 +131,14 @@ fn bench_multi_thread_pc<
     c: C,
     opt: &Opt,
 ) {
-    let mut core_ids = core_affinity::get_core_ids().unwrap();
-    println!(
-        "core_id_count: {:?}, use same_code = {}",
-        core_ids.len(),
-        opt.same_core
-    );
-
-    let (core_p, core_c) = if !opt.same_core {
-        (core_ids.pop().unwrap(), core_ids.pop().unwrap())
+    let _core_ids = core_affinity::get_core_ids().unwrap();
+    let CorePair {
+        producer: core_p,
+        consumer: core_c,
+    }: CorePair = if opt.cores.is_some() {
+        opt.cores.unwrap()
     } else {
-        let core0 = core_ids.pop().unwrap();
-        (core0, core0)
+        CorePair::default()
     };
 
     let start = std::time::Instant::now();
@@ -128,7 +177,7 @@ fn bench_multi_thread_pc<
 
 fn main() {
     let opt = Opt::from_args();
-    println!("Run {:?}", opt.ringbuf);
+    println!("Run {:?} {:?}", opt.ringbuf, opt.cores);
 
     match opt.ringbuf {
         RingBufType::R0 => {
@@ -140,20 +189,21 @@ fn main() {
             bench_single_thread(&mut ringbuf, &opt);
         }
         RingBufType::R2S => {
-            let (p, c) = r2::make::<i32>(opt.buffer_capacity);
+            let (p, c, _) = r2::make::<i32>(opt.buffer_capacity);
             bench_single_thread_pc(p, c, &opt);
         }
         RingBufType::R2M => {
-            let (p, c) = r2::make::<i32>(opt.buffer_capacity);
+            let (p, c, _) = r2::make::<i32>(opt.buffer_capacity);
             bench_multi_thread_pc(p, c, &opt);
         }
         RingBufType::R3S => {
-            let (p, c) = r3::make::<i32>(opt.buffer_capacity);
+            let (p, c, _) = r3::make::<i32>(opt.buffer_capacity);
             bench_single_thread_pc(p, c, &opt);
         }
         RingBufType::R3M => {
-            let (p, c) = r3::make::<i32>(opt.buffer_capacity);
+            let (p, c, b) = r3::make::<i32>(opt.buffer_capacity);
             bench_multi_thread_pc(p, c, &opt);
+            b.as_ref().show_cache()
         }
     }
 }

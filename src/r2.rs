@@ -103,14 +103,17 @@ impl<T> Drop for Buffer<T> {
     }
 }
 
-pub fn make<T>(capacity: usize) -> (Producer<T>, Consumer<T>) {
+pub fn make<T>(capacity: usize) -> (Producer<T>, Consumer<T>, Arc<Buffer<T>>) {
     let arc = Arc::new(Buffer::with_capacity(capacity));
 
     (
         Producer {
             buffer: arc.clone(),
         },
-        Consumer { buffer: arc },
+        Consumer {
+            buffer: arc.clone(),
+        },
+        arc,
     )
 }
 
