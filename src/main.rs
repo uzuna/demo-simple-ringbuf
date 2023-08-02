@@ -110,7 +110,7 @@ fn bench_single_thread<R: RingBufTrait<i32>>(rb: &mut R, opt: &Opt) -> String {
     let end = std::time::Instant::now();
     let ms = (end - start).as_millis() as usize;
     let count = opt.enqueue_count * opt.loop_count * 2;
-    format!("{:9} ops/ms {} enqueue in {:5} ms", count / ms, count, ms)
+    format!("{} ops in {:5} ms  {:9} ops/ms", count, ms, count / ms)
 }
 
 fn bench_single_thread_pc<P: RingBufProducer<i32>, C: RingBufConsumer<i32>>(
@@ -130,7 +130,7 @@ fn bench_single_thread_pc<P: RingBufProducer<i32>, C: RingBufConsumer<i32>>(
     let end = std::time::Instant::now();
     let ms = (end - start).as_millis() as usize;
     let count = opt.enqueue_count * opt.loop_count * 2;
-    format!("{:9} ops/ms {} enqueue in {:5} ms", count / ms, count, ms)
+    format!("{} ops in {:5} ms  {:9} ops/ms", count, ms, count / ms)
 }
 
 fn bench_multi_thread_pc<
@@ -182,7 +182,7 @@ fn bench_multi_thread_pc<
     let end = std::time::Instant::now();
     let ms = (end - start).as_millis() as usize;
     let count = opt.enqueue_count * opt.loop_count * 2;
-    format!("{:9} ops/ms {} enqueue in {:5} ms", count / ms, count, ms)
+    format!("{} ops in {:5} ms  {:9} ops/ms", count, ms, count / ms)
 }
 
 fn main() {

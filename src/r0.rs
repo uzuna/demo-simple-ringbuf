@@ -27,24 +27,20 @@ impl<T> RingBuf<T> {
     }
 
     #[inline]
-    fn read_ptr(&self) -> usize {
-        self.read_idx % (self.allocated_size - 1)
-    }
-    #[inline]
-    fn write_ptr(&self) -> usize {
-        self.write_idx % (self.allocated_size - 1)
+    fn to_ptr(&self, pos: usize) -> usize {
+        pos % (self.allocated_size - 1)
     }
 
     #[inline]
     unsafe fn load(&self, pos: usize) -> T {
-        let end = self.buf.add(pos);
-        ptr::read(end)
+        let ptr = self.buf.add(pos);
+        ptr::read(ptr)
     }
 
     #[inline]
     unsafe fn store(&self, pos: usize, v: T) {
-        let end = self.buf.add(pos);
-        ptr::write(&mut *end, v);
+        let ptr = self.buf.add(pos);
+        ptr::write(&mut *ptr, v);
     }
 }
 
@@ -54,7 +50,7 @@ impl<T> RingBufTrait<T> for RingBuf<T> {
             return false;
         }
         unsafe {
-            self.store(self.write_ptr(), item);
+            self.store(self.to_ptr(self.write_idx), item);
         }
         self.write_idx += 1;
         true
@@ -64,7 +60,7 @@ impl<T> RingBufTrait<T> for RingBuf<T> {
         if self.read_idx == self.write_idx {
             return None;
         }
-        let item = unsafe { self.load(self.read_ptr()) };
+        let item = unsafe { self.load(self.to_ptr(self.read_idx)) };
         self.read_idx += 1;
         Some(item)
     }

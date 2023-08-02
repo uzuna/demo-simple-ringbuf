@@ -10,7 +10,8 @@ core_affinity = "0.8.0"
 structopt = "0.3.26"
 
 [profile.release]
-strip = true
-opt-level = "z"
-lto = true
-codegen-units = 1
+#strip = true
+opt-level = 2
+debug = true
+#lto = true
+#codegen-units = 1
