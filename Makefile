@@ -16,9 +16,9 @@ ${TARGET}: src/*.rs
 	cargo build --release
 
 .PHONY: bench
-bench:
-	@${TARGET} -r r0
-	@${TARGET} -r r1
+bench: ${TARGET}
+	@${TARGET} -r r0s
+	@${TARGET} -r r1s
 	@${TARGET} -r r2s
 	@${TARGET} -r r2m -c 0,0
 	@${TARGET} -r r2m -c 0,1
@@ -29,18 +29,36 @@ bench:
 	@${TARGET} -r r3m -c 0,2
 
 .PHONY: perf.s
-perf.s:
+perf.s: ${TARGET}
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2s
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r3s
 
 .PHONY: perf.r2
-perf.r2:
+perf.r2: ${TARGET}
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2s
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2m -c 0,0
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2m -c 0,1
 
 .PHONY: perf.r3
-perf.r3:
+perf.r3: ${TARGET}
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r3s
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r3m -c 0,0
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r3m -c 0,1
+
+.PHONY: enable-perf
+enable-perf:
+	sudo bash -c "echo -1 > /proc/sys/kernel/perf_event_paranoid"
+
+.PHONY: setup
+setup:
+	sudo apt install -y linux-tools-common linux-tools-generic linux-tools-`uname -r`
+	cargo install cargo-asm
+
+.PHONY: check-asm
+check-asm: ${TARGET}
+	cargo asm "<simple_ringbuf::r2::Producer<T> as simple_ringbuf::helper::RingBufProducer<T>>::enqueue"
+	cargo asm "<simple_ringbuf::r3::Producer<T> as simple_ringbuf::helper::RingBufProducer<T>>::enqueue"
+
+.PHONY: cpuinfo
+cpuinfo:
+	cat /proc/cpuinfo | grep -e processor -e "core id"

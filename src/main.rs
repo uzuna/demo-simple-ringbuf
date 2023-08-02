@@ -5,7 +5,7 @@ mod r2;
 #[macro_use]
 mod r3;
 
-use std::{str::FromStr, thread::spawn, vec};
+use std::{fmt::Display, str::FromStr, thread::spawn, vec};
 
 use helper::{RingBufConsumer, RingBufProducer, RingBufTrait};
 pub use r0::RingBuf as RingBuf0;
@@ -65,6 +65,12 @@ impl FromStr for CorePair {
     }
 }
 
+impl Display for CorePair {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({},{})", self.producer.id, self.consumer.id)
+    }
+}
+
 #[derive(Debug, StructOpt)]
 struct Opt {
     #[structopt(short, long, default_value = "2097152")]
@@ -73,7 +79,7 @@ struct Opt {
     enqueue_count: usize,
     #[structopt(short, long, default_value = "500000")]
     loop_count: usize,
-    #[structopt(short, long, default_value = "R0")]
+    #[structopt(short, long, default_value = "R0S", possible_values = &RingBufType::variants(), case_insensitive = true)]
     ringbuf: RingBufType,
     #[structopt(short, long)]
     cores: Option<CorePair>,
@@ -82,8 +88,8 @@ struct Opt {
 arg_enum! {
     #[derive(Debug)]
     enum RingBufType {
-        R0,
-        R1,
+        R0S,
+        R1S,
         R2S,
         R2M,
         R3S,
@@ -91,7 +97,7 @@ arg_enum! {
     }
 }
 
-fn bench_single_thread<R: RingBufTrait<i32>>(rb: &mut R, opt: &Opt) {
+fn bench_single_thread<R: RingBufTrait<i32>>(rb: &mut R, opt: &Opt) -> String {
     let start = std::time::Instant::now();
     for _ in 0..opt.loop_count {
         for i in 0..opt.enqueue_count {
@@ -104,10 +110,14 @@ fn bench_single_thread<R: RingBufTrait<i32>>(rb: &mut R, opt: &Opt) {
     let end = std::time::Instant::now();
     let ms = (end - start).as_millis() as usize;
     let count = opt.enqueue_count * opt.loop_count * 2;
-    println!("{:9} ops/ms {} enqueue in {:5} ms", count / ms, count, ms);
+    format!("{:9} ops/ms {} enqueue in {:5} ms", count / ms, count, ms)
 }
 
-fn bench_single_thread_pc<P: RingBufProducer<i32>, C: RingBufConsumer<i32>>(p: P, c: C, opt: &Opt) {
+fn bench_single_thread_pc<P: RingBufProducer<i32>, C: RingBufConsumer<i32>>(
+    p: P,
+    c: C,
+    opt: &Opt,
+) -> String {
     let start = std::time::Instant::now();
     for _ in 0..opt.loop_count {
         for i in 0..opt.enqueue_count {
@@ -120,7 +130,7 @@ fn bench_single_thread_pc<P: RingBufProducer<i32>, C: RingBufConsumer<i32>>(p: P
     let end = std::time::Instant::now();
     let ms = (end - start).as_millis() as usize;
     let count = opt.enqueue_count * opt.loop_count * 2;
-    println!("{:9} ops/ms {} enqueue in {:5} ms", count / ms, count, ms);
+    format!("{:9} ops/ms {} enqueue in {:5} ms", count / ms, count, ms)
 }
 
 fn bench_multi_thread_pc<
@@ -130,7 +140,7 @@ fn bench_multi_thread_pc<
     p: P,
     c: C,
     opt: &Opt,
-) {
+) -> String {
     let _core_ids = core_affinity::get_core_ids().unwrap();
     let CorePair {
         producer: core_p,
@@ -172,38 +182,78 @@ fn bench_multi_thread_pc<
     let end = std::time::Instant::now();
     let ms = (end - start).as_millis() as usize;
     let count = opt.enqueue_count * opt.loop_count * 2;
-    println!("{:9} ops/ms {} enqueue in {:5} ms", count / ms, count, ms);
+    format!("{:9} ops/ms {} enqueue in {:5} ms", count / ms, count, ms)
 }
 
 fn main() {
     let opt = Opt::from_args();
-    println!("Run {:?} {:?}", opt.ringbuf, opt.cores);
 
-    match opt.ringbuf {
-        RingBufType::R0 => {
+    let result = match opt.ringbuf {
+        RingBufType::R0S => {
             let mut ringbuf = RingBuf0::<i32>::with_capacity(opt.buffer_capacity);
-            bench_single_thread(&mut ringbuf, &opt);
+            bench_single_thread(&mut ringbuf, &opt)
         }
-        RingBufType::R1 => {
+        RingBufType::R1S => {
             let mut ringbuf = RingBuf1::<i32>::with_capacity(opt.buffer_capacity);
-            bench_single_thread(&mut ringbuf, &opt);
+            bench_single_thread(&mut ringbuf, &opt)
         }
         RingBufType::R2S => {
             let (p, c, _) = r2::make::<i32>(opt.buffer_capacity);
-            bench_single_thread_pc(p, c, &opt);
+            bench_single_thread_pc(p, c, &opt)
         }
         RingBufType::R2M => {
             let (p, c, _) = r2::make::<i32>(opt.buffer_capacity);
-            bench_multi_thread_pc(p, c, &opt);
+            bench_multi_thread_pc(p, c, &opt)
         }
         RingBufType::R3S => {
             let (p, c, _) = r3::make::<i32>(opt.buffer_capacity);
-            bench_single_thread_pc(p, c, &opt);
+            bench_single_thread_pc(p, c, &opt)
         }
         RingBufType::R3M => {
-            let (p, c, b) = r3::make::<i32>(opt.buffer_capacity);
-            bench_multi_thread_pc(p, c, &opt);
-            b.as_ref().show_cache()
+            let (p, c, _b) = r3::make::<i32>(opt.buffer_capacity);
+            // _b.as_ref().show_cache();
+            bench_multi_thread_pc(p, c, &opt)
         }
+    };
+    println!(
+        "Run {} {}: {result}",
+        opt.ringbuf,
+        if opt.cores.is_some() {
+            format!("{}", opt.cores.unwrap())
+        } else {
+            "     ".to_string()
+        }
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::helper::{RingBufConsumer, RingBufProducer, RingBufTrait};
+
+    fn check_ringbuf<R: RingBufTrait<i32>>(mut ringbuf: R) {
+        for i in 0..10 {
+            ringbuf.enqueue(i);
+        }
+        for i in 0..10 {
+            assert_eq!(ringbuf.dequeue(), Some(i));
+        }
+    }
+    fn check_pc<P: RingBufProducer<i32>, C: RingBufConsumer<i32>>(p: P, c: C) {
+        for i in 0..10 {
+            p.enqueue(i);
+        }
+        for i in 0..10 {
+            assert_eq!(c.dequeue(), Some(i));
+        }
+    }
+    #[test]
+    fn test_queue() {
+        let cap = 10;
+        check_ringbuf(crate::r0::RingBuf::<i32>::with_capacity(cap));
+        check_ringbuf(crate::r1::RingBuf::<i32>::with_capacity(cap));
+        let (p, c, _) = crate::r2::make::<i32>(cap);
+        check_pc(p, c);
+        let (p, c, _) = crate::r3::make::<i32>(cap);
+        check_pc(p, c);
     }
 }

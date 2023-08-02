@@ -9,7 +9,6 @@ use std::{
 
 use crate::helper::{allocate_buffer, RingBufConsumer, RingBufProducer};
 
-#[repr(C)]
 pub struct Buffer<T> {
     buffer: *mut T,
     capacity: usize,
