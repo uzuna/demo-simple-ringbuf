@@ -1,14 +1,11 @@
 TARGET := target/release/simple-ringbuf
 PERF_STAT_OPT:=-B -e cache-references,cache-misses,cycles,instructions,branch-misses,faults,migrations
 
-# nativeではaesのfeatureだけなので追加する
-# a78
-# dotprod　=　a8.4aのSDOT and UDOT -> A78に含まれる
-# ras = RAS extension -> A78に含まれる
-# rcpc　=　a8.3aのLDAPR命令
-# ssbs = a8.5a peculativeStore Bypass Safe
-# sha2 = Cryptographic extension -> OptionalでJetsonには含まれる
-export RUSTFLAGS=-C target-feature=+v8.2a,+a78,+rcpc,+sha2,+ssbs
+ARCH=$(shell uname -m)
+ifeq ($(ARCH),aarch64)
+	# for Arm Cortex-A78AE(Jetson Orin Series)
+	export RUSTFLAGS=-C target-feature=+v8.2a,+a78,+rcpc,+dotprod,+ssbs
+endif
 
 .PHONY: fmt
 fmt:
