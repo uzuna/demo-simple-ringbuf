@@ -1,5 +1,5 @@
 TARGET := target/release/simple-ringbuf
-PERF_STAT_OPT:=-B -e cache-references,cache-misses,cycles,instructions,branch-misses,faults,migrations
+PERF_STAT_OPT:=-B -e cache-references,cache-misses,cycles,instructions,branch-misses,inst_retired,l1d_cache,l1d_cache_lmiss_rd,l2d_cache,l2d_cache_lmiss_rd,l3d_cache,l3d_cache_lmiss_rd,ll_cache_rd,ll_cache_miss_rd,mem_access,stalled-cycles-frontend,stalled-cycles-backend
 
 ARCH=$(shell uname -m)
 ifeq ($(ARCH),aarch64)
@@ -43,8 +43,10 @@ perf.s: ${TARGET}
 
 .PHONY: perf.r2
 perf.r2: ${TARGET}
+	perf stat ${PERF_STAT_OPT} ${TARGET} -r r1s
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2s
 	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2m -c 0,1
+#	perf stat ${PERF_STAT_OPT} ${TARGET} -r r2m -c 0,4
 
 .PHONY: perf.r3
 perf.r3: ${TARGET}
