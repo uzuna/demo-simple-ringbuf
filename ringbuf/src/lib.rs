@@ -1,7 +1,5 @@
-pub fn add_loop() -> usize {
-    let mut count = 0;
-    for _ in 0..1000_000_000 {
-        count += 1;
-    }
-    count
-}
+mod helper;
+pub mod r0;
+pub mod r1;
+pub mod r2;
+pub mod r3;

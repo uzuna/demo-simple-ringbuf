@@ -62,8 +62,12 @@ setup:
 
 .PHONY: check-asm
 check-asm: ${TARGET}
-	cargo asm "<simple_ringbuf::r2::Producer<T> as simple_ringbuf::helper::RingBufProducer<T>>::enqueue"
-	cargo asm "<simple_ringbuf::r3::Producer<T> as simple_ringbuf::helper::RingBufProducer<T>>::enqueue"
+	cargo asm "<ringbuf::r1::Buffer as ringbuf::helper::RingBufTrait<usize>>::enqueue"
+	cargo asm "<ringbuf::r1::Buffer as ringbuf::helper::RingBufTrait<usize>>::dequeue"
+	cargo asm "<ringbuf::r2::Buffer as ringbuf::helper::RingBufTrait<usize>>::enqueue"
+	cargo asm "<ringbuf::r2::Buffer as ringbuf::helper::RingBufTrait<usize>>::dequeue"
+	cargo asm "<ringbuf::r3::Buffer as ringbuf::helper::RingBufTrait<usize>>::enqueue"
+	cargo asm "<ringbuf::r3::Buffer as ringbuf::helper::RingBufTrait<usize>>::dequeue"
 
 .PHONY: cpuinfo
 cpuinfo:
