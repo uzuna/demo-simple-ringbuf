@@ -7,6 +7,9 @@ ifeq ($(ARCH),aarch64)
 	export RUSTFLAGS=-C target-feature=+v8.2a,+a78,+rcpc,+dotprod,+ssbs
 endif
 
+.PHONY: build
+build: ${TARGET}
+
 .PHONY: fmt
 fmt:
 	cargo fmt

@@ -7,6 +7,6 @@ members = [
 
 [profile.release]
 strip = true
-opt-level = 3
-#debug = true
+opt-level = "s"
+debug = true
 lto = true
