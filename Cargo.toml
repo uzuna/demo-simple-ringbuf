@@ -4,3 +4,9 @@ members = [
     "ringbuf-app",
     "check-feature"
 ]
+
+[profile.release]
+strip = true
+opt-level = 3
+#debug = true
+lto = true
