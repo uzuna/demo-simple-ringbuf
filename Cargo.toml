@@ -2,11 +2,12 @@
 members = [
     "ringbuf",
     "ringbuf-app",
-    "check-feature"
+    "check-feature",
+    "check-hwcap"
 ]
 
 [profile.release]
 strip = true
-opt-level = "s"
+opt-level = 3
 debug = true
 lto = true

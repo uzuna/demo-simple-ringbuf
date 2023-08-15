@@ -1,5 +1,5 @@
 TARGET := target/release/simple-ringbuf
-PERF_STAT_OPT:=-B -e cache-references,cache-misses,cycles,instructions,branch-misses,inst_retired,l1d_cache,l1d_cache_lmiss_rd,l2d_cache,l2d_cache_lmiss_rd,l3d_cache,l3d_cache_lmiss_rd,ll_cache_rd,ll_cache_miss_rd,mem_access,stalled-cycles-frontend,stalled-cycles-backend
+PERF_STAT_OPT:=-B -e cache-references,cache-misses,cycles,instructions,branch-misses,inst_retired,l1d_cache,l1d_cache_lmiss_rd,l2d_cache,l2d_cache_lmiss_rd,l3d_cache,l3d_cache_lmiss_rd,mem_access,stalled-cycles-frontend,stalled-cycles-backend
 
 ARCH=$(shell uname -m)
 ifeq ($(ARCH),aarch64)

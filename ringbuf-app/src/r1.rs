@@ -9,7 +9,7 @@ use crate::helper::{allocate_buffer, RingBufTrait};
 pub struct RingBuf<T> {
     buf: *mut T,
     capacity: usize,
-    allocated_size: usize,
+    position_mask: usize,
     read_idx: usize,
     write_idx: usize,
 }
@@ -20,7 +20,7 @@ impl<T> RingBuf<T> {
         Self {
             buf: ptr,
             capacity,
-            allocated_size: capacity.next_power_of_two(),
+            position_mask: capacity.next_power_of_two() -1,
             read_idx: 0,
             write_idx: 0,
         }
@@ -28,7 +28,7 @@ impl<T> RingBuf<T> {
 
     #[inline]
     fn to_ptr(&self, pos: usize) -> usize {
-        pos & (self.allocated_size - 1)
+        pos & (self.position_mask)
     }
 
     #[inline]
@@ -72,7 +72,7 @@ impl<T> Drop for RingBuf<T> {
 
         unsafe {
             let layout = Layout::from_size_align(
-                self.allocated_size * mem::size_of::<T>(),
+                (self.position_mask + 1) * mem::size_of::<T>(),
                 mem::align_of::<T>(),
             )
             .unwrap();
