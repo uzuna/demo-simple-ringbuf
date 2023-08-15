@@ -129,7 +129,7 @@ impl<T> Drop for Buffer<T> {
 
         unsafe {
             let layout = Layout::from_size_align(
-                (self.position_mask+1) * mem::size_of::<T>(),
+                (self.position_mask + 1) * mem::size_of::<T>(),
                 mem::align_of::<T>(),
             )
             .unwrap();

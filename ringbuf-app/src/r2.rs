@@ -35,7 +35,7 @@ impl<T> Buffer<T> {
         Self {
             buffer: ptr,
             capacity,
-            position_mask: capacity.next_power_of_two() -1 ,
+            position_mask: capacity.next_power_of_two() - 1,
             write_idx: AtomicUsize::new(0),
             read_idx: AtomicUsize::new(0),
         }
@@ -93,7 +93,7 @@ impl<T> Drop for Buffer<T> {
 
         unsafe {
             let layout = Layout::from_size_align(
-                (self.position_mask+1) * mem::size_of::<T>(),
+                (self.position_mask + 1) * mem::size_of::<T>(),
                 mem::align_of::<T>(),
             )
             .unwrap();

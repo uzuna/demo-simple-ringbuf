@@ -1,3 +1,5 @@
+// Reference from: https://stackoverflow.com/questions/65156743/what-target-features-uses-rustc-by-default
+// And : https://gist.github.com/AngelicosPhosphoros/4f8c9f08656e0812f4ed3560e53bd600
 #![recursion_limit = "512"]
 
 // This script prints all cpu features which active in this build.

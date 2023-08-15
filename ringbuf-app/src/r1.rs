@@ -20,7 +20,7 @@ impl<T> RingBuf<T> {
         Self {
             buf: ptr,
             capacity,
-            position_mask: capacity.next_power_of_two() -1,
+            position_mask: capacity.next_power_of_two() - 1,
             read_idx: 0,
             write_idx: 0,
         }
