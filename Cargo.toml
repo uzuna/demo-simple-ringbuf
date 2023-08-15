@@ -9,5 +9,20 @@ members = [
 [profile.release]
 strip = true
 opt-level = 3
-debug = true
 lto = true
+
+[profile.opt-2]
+inherits = "release"
+opt-level = 2
+
+[profile.opt-s]
+inherits = "release"
+opt-level = "s"
+
+[profile.opt-z]
+inherits = "release"
+opt-level = "z"
+
+[profile.disable-lto]
+inherits = "release"
+lto = false

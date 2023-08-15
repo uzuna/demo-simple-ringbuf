@@ -7,6 +7,8 @@ ifeq ($(ARCH),aarch64)
 	export RUSTFLAGS=-C target-feature=+v8.2a,+a78,+rcpc,+dotprod,+ssbs
 endif
 
+PROFILES:=opt-2 opt-s opt-z disable-lto release
+
 .PHONY: build
 build: ${TARGET}
 
@@ -24,6 +26,15 @@ check-fmt:
 ${TARGET}: ringbuf-app/src/*.rs
 	cargo build --release
 
+.PHONY: bench.loop
+bench.loop:
+	@for i in ${PROFILES}; do\
+		cargo build --profile $$i;\
+		echo build $$i;\
+		make bench > bench_$$i.txt;\
+	done
+	sh make_csv.sh
+
 .PHONY: bench
 bench: ${TARGET}
 	@${TARGET} -r r0s
@@ -35,8 +46,6 @@ bench: ${TARGET}
 	@${TARGET} -r r3s
 	@${TARGET} -r r3m -c 0,0
 	@${TARGET} -r r3m -c 0,1
-	@${TARGET} -r r3m -c 0,2
-	@${TARGET} -r r3m -c 0,3
 	@${TARGET} -r r3m -c 0,4
 
 .PHONY: perf.s
