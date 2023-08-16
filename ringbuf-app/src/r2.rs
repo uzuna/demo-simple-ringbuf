@@ -12,7 +12,7 @@ use crate::helper::{allocate_buffer, RingBufConsumer, RingBufProducer};
 pub struct Buffer<T> {
     buffer: *mut T,
     capacity: usize,
-    allocated_size: usize,
+    position_mask: usize,
     write_idx: AtomicUsize,
     read_idx: AtomicUsize,
 }
@@ -35,7 +35,7 @@ impl<T> Buffer<T> {
         Self {
             buffer: ptr,
             capacity,
-            allocated_size: capacity.next_power_of_two(),
+            position_mask: capacity.next_power_of_two() - 1,
             write_idx: AtomicUsize::new(0),
             read_idx: AtomicUsize::new(0),
         }
@@ -43,7 +43,7 @@ impl<T> Buffer<T> {
 
     #[inline]
     fn buf_offset(&self, idx: usize) -> usize {
-        idx & (self.allocated_size - 1)
+        idx & (self.position_mask)
     }
 
     #[inline]
@@ -93,7 +93,7 @@ impl<T> Drop for Buffer<T> {
 
         unsafe {
             let layout = Layout::from_size_align(
-                self.allocated_size * mem::size_of::<T>(),
+                (self.position_mask + 1) * mem::size_of::<T>(),
                 mem::align_of::<T>(),
             )
             .unwrap();

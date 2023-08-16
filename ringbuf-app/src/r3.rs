@@ -14,7 +14,7 @@ use crate::helper::{allocate_buffer, RingBufConsumer, RingBufProducer};
 pub struct Buffer<T> {
     buffer: *mut T,
     capacity: usize,
-    allocated_size: usize,
+    position_mask: usize,
     // PCで別のスレッドが触るので個別のL1キャッシュに乗るようにPaddingで埋めて分割する
     _padding0: [usize; crate::cacheline_pad!(3)],
     write_idx: AtomicUsize,
@@ -44,7 +44,7 @@ impl<T> Buffer<T> {
         Self {
             buffer: ptr,
             capacity,
-            allocated_size: capacity.next_power_of_two(),
+            position_mask: capacity.next_power_of_two() - 1,
             _padding0: [0; crate::cacheline_pad!(3)],
             write_idx: AtomicUsize::new(0),
             cached_read_idx: Cell::new(0),
@@ -58,7 +58,7 @@ impl<T> Buffer<T> {
 
     #[inline]
     fn buf_offset(&self, idx: usize) -> usize {
-        idx & (self.allocated_size - 1)
+        idx & (self.position_mask)
     }
 
     #[inline]
@@ -129,7 +129,7 @@ impl<T> Drop for Buffer<T> {
 
         unsafe {
             let layout = Layout::from_size_align(
-                self.allocated_size * mem::size_of::<T>(),
+                (self.position_mask + 1) * mem::size_of::<T>(),
                 mem::align_of::<T>(),
             )
             .unwrap();
