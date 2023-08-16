@@ -4,7 +4,7 @@ PERF_STAT_OPT:=-B -e cache-references,cache-misses,cycles,instructions,branch-mi
 ARCH=$(shell uname -m)
 ifeq ($(ARCH),aarch64)
 	# for Arm Cortex-A78AE(Jetson Orin Series)
-	export RUSTFLAGS=-C target-feature=+v8.2a,+a78,+rcpc,+dotprod,+ssbs
+	# export RUSTFLAGS=-C target-feature=+v8.2a,+a78,+rcpc,+dotprod,+ssbs
 endif
 
 PROFILES:=opt-2 opt-s opt-z disable-lto release
@@ -31,12 +31,13 @@ bench.loop:
 	@for i in ${PROFILES}; do\
 		cargo build --profile $$i;\
 		echo build $$i;\
-		make bench > bench_$$i.txt;\
+		make bench TARGET=target/$$i/simple-ringbuf > bench_$$i.txt;\
 	done
 	sh make_csv.sh
 
 .PHONY: bench
 bench: ${TARGET}
+	@echo ${TARGET}
 	@${TARGET} -r r0s
 	@${TARGET} -r r1s
 	@${TARGET} -r r2s
